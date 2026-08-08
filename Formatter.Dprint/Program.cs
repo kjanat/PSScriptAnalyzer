@@ -16,6 +16,12 @@ public static class Program
 
 public static class Plugin
 {
+    private const string RepositoryPath = "kjanat/PSScriptAnalyzer";
+    private const string RepositoryUrl = $"https://github.com/{RepositoryPath}";
+    private static readonly string Version = GetVersion();
+    private static readonly string ConfigSchemaUrl =
+        $"https://plugins.dprint.dev/{RepositoryPath}/{Version}/schema.json";
+
     private static readonly HashSet<string> KnownProperties =
     [
         "braceStyle",
@@ -75,9 +81,22 @@ public static class Plugin
             """;
     }
 
-    public static string GetConfigSchema() => """
+    public static string GetPluginInfo() => $$"""
+        {"name":"dprint-plugin-powershell","version":"{{Version}}","configKey":"powershell","helpUrl":"{{RepositoryUrl}}","configSchemaUrl":"{{ConfigSchemaUrl}}","updateUrl":"https://plugins.dprint.dev/{{RepositoryPath}}/latest.json"}
+        """;
+
+    public static string GetLicenseText()
+    {
+        using var stream = typeof(Plugin).Assembly.GetManifestResourceStream("Formatter.Dprint.LICENSE")
+            ?? throw new InvalidOperationException("The embedded plugin license could not be found.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    public static string GetConfigSchema() => $$"""
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "$id": "{{ConfigSchemaUrl}}",
           "title": "dprint PowerShell formatter configuration",
           "type": "object",
           "additionalProperties": false,
@@ -123,6 +142,13 @@ public static class Plugin
           }
         }
         """;
+
+    private static string GetVersion()
+    {
+        var version = typeof(Plugin).Assembly.GetName().Version
+            ?? throw new InvalidOperationException("The plugin assembly version could not be read.");
+        return $"{version.Major}.{version.Minor}.{version.Build}";
+    }
 
     private static FormatterOptions ParseOptions(string configJson, string overrideConfigJson)
     {

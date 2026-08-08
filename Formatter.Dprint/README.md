@@ -34,13 +34,16 @@ dprint protocol bridge. Its only host import is dprint's supported `env.fd_write
 
 ## Use with dprint
 
-Reference the built module in `dprint.json`:
+Install the latest released plugin from the dprint registry:
+
+```sh
+dprint add kjanat/PSScriptAnalyzer
+```
+
+Then configure it in `dprint.json`:
 
 ```json
 {
-  "plugins": [
-    "./Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm"
-  ],
   "powershell": {
     "indentSize": 4,
     "braceStyle": "sameLine"
@@ -58,6 +61,16 @@ dprint check .
 The plugin matches `.ps1`, `.psm1`, and `.psd1` files. Configuration is described by
 [`schema.json`](schema.json); dprint also reports unknown keys and invalid values as configuration
 diagnostics.
+
+For local development, replace the registry-installed plugin URL with the built module path:
+
+```json
+{
+  "plugins": [
+    "./Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm"
+  ]
+}
+```
 
 ## How the C# module works
 
@@ -102,3 +115,24 @@ node Formatter.Dprint/scripts/generate-schema.mjs \
   Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm \
   Formatter.Dprint/schema.json
 ```
+
+## Release
+
+The plugin version is the `Version` property in `Formatter.Dprint.csproj`. A release uses the same
+bare semantic version for the assembly, schema URL, Git tag, and GitHub release. Do not prefix the
+tag with `v` or `dprint-`: the dprint registry resolves the version directly to that GitHub tag.
+
+The repository also contains PSScriptAnalyzer's historical tags. The release workflow therefore
+refuses to publish unless the pushed tag exactly matches the dprint project's declared version.
+
+To publish a new immutable release:
+
+1. Update `Version`, build the module, and regenerate `schema.json`.
+2. Run `Formatter.Dprint/scripts/e2e.sh` and commit the version, schema, and related changes.
+3. Create and push a signed bare-semver tag for that exact signed commit.
+4. Follow the `Release dprint PowerShell formatter` workflow through completion.
+5. Verify that the GitHub release contains `plugin.wasm`, `schema.json`, and `checksums.txt`, then
+   verify `dprint add kjanat/PSScriptAnalyzer` against the published release.
+
+Released assets are immutable through the dprint registry's cache. Never replace an asset on an
+existing release; fix it by incrementing `Version` and publishing a new release.

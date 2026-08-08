@@ -25,6 +25,8 @@ static MonoMethod *format_method;
 static MonoMethod *diagnostics_method;
 static MonoMethod *resolved_config_method;
 static MonoMethod *schema_method;
+static MonoMethod *plugin_info_method;
+static MonoMethod *license_method;
 static const char *error_text;
 static char *owned_error_text;
 static int runtime_state;
@@ -153,7 +155,10 @@ static int ensure_runtime(void) {
     diagnostics_method = mono_wasm_assembly_find_method(klass, "GetConfigDiagnostics", 1);
     resolved_config_method = mono_wasm_assembly_find_method(klass, "GetResolvedConfig", 1);
     schema_method = mono_wasm_assembly_find_method(klass, "GetConfigSchema", 0);
-    if (format_method == NULL || diagnostics_method == NULL || resolved_config_method == NULL || schema_method == NULL) {
+    plugin_info_method = mono_wasm_assembly_find_method(klass, "GetPluginInfo", 0);
+    license_method = mono_wasm_assembly_find_method(klass, "GetLicenseText", 0);
+    if (format_method == NULL || diagnostics_method == NULL || resolved_config_method == NULL ||
+        schema_method == NULL || plugin_info_method == NULL || license_method == NULL) {
         error_text = "Could not find the managed dprint formatter entry point.";
         return 0;
     }
@@ -292,18 +297,30 @@ uint32_t get_config_schema(void) {
 
 DPRINT_EXPORT("get_plugin_info")
 uint32_t get_plugin_info(void) {
-    return write_shared(
-        "{\"name\":\"dprint-plugin-powershell\",\"version\":\"0.1.0\","
-        "\"configKey\":\"powershell\","
-        "\"helpUrl\":\"https://github.com/kjanat/PSScriptAnalyzer/tree/wasm-formatter/Formatter.Dprint\","
-        "\"configSchemaUrl\":\"https://plugins.dprint.dev/kjanat/PSScriptAnalyzer/0.1.0/schema.json\","
-        "\"updateUrl\":\"https://plugins.dprint.dev/kjanat/PSScriptAnalyzer/latest.json\"}"
-    );
+    if (!ensure_runtime()) {
+        return write_shared("{}");
+    }
+    char *info = invoke_managed_no_args(plugin_info_method);
+    if (info == NULL) {
+        return write_shared("{}");
+    }
+    uint32_t length = write_shared(info);
+    mono_free(info);
+    return length;
 }
 
 DPRINT_EXPORT("get_license_text")
 uint32_t get_license_text(void) {
-    return write_shared("MIT License");
+    if (!ensure_runtime()) {
+        return write_shared("");
+    }
+    char *license = invoke_managed_no_args(license_method);
+    if (license == NULL) {
+        return write_shared("");
+    }
+    uint32_t length = write_shared(license);
+    mono_free(license);
+    return length;
 }
 
 DPRINT_EXPORT("set_file_path")

@@ -2,6 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>plugin</AssemblyName>
+    <Version>0.1.0</Version>
+    <RepositoryUrl>https://github.com/kjanat/PSScriptAnalyzer</RepositoryUrl>
     <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
     <OutputType>Exe</OutputType>
     <PublishTrimmed>true</PublishTrimmed>
@@ -15,6 +17,7 @@
     <ProjectReference Include="../Formatter.Core/Formatter.Core.csproj" />
     <PackageReference Include="System.Management.Automation" GeneratePathProperty="true" ExcludeAssets="compile;runtime" />
     <Reference Include="System.Management.Automation" HintPath="$(PkgSystem_Management_Automation)/runtimes/unix/lib/net8.0/System.Management.Automation.dll" Private="true" />
+    <EmbeddedResource Include="../LICENSE" LogicalName="Formatter.Dprint.LICENSE" />
   </ItemGroup>
 
   <Target Name="AddDprintNativeSources" BeforeTargets="_WasiLink">

@@ -10,7 +10,10 @@ mise exec -- dotnet publish Formatter.Dprint/Formatter.Dprint.csproj \
   -c Release \
   --source https://api.nuget.org/v3/index.json
 
-node Formatter.Dprint/scripts/check-plugin.mjs "$plugin"
+version=$(mise exec -- dotnet msbuild Formatter.Dprint/Formatter.Dprint.csproj \
+  -nologo \
+  -getProperty:Version)
+node Formatter.Dprint/scripts/check-plugin.mjs "$plugin" "$version" LICENSE
 node Formatter.Dprint/scripts/generate-schema.mjs \
   "$plugin" \
   Formatter.Dprint/schema.json \
