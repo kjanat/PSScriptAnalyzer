@@ -3,12 +3,23 @@ using System.Text;
 
 namespace Microsoft.PowerShell.ScriptAnalyzer.Formatter;
 
+/// <summary>Formats PowerShell source text without creating or using a PowerShell runspace.</summary>
 public static class PowerShellFormatter
 {
     private const TokenFlags OperatorFlags =
         TokenFlags.AssignmentOperator |
         TokenFlags.BinaryOperator;
 
+    /// <summary>Formats a complete PowerShell source string.</summary>
+    /// <param name="source">The PowerShell source text to format.</param>
+    /// <param name="options">Formatting options, or <see langword="null"/> for defaults.</param>
+    /// <returns>
+    /// The formatted text and parser errors. Input containing parser errors is returned unchanged.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <see cref="FormatterOptions.IndentSize"/> is outside the range 0 through 32.
+    /// </exception>
     public static FormatterResult Format(string source, FormatterOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(source);

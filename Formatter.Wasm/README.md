@@ -3,7 +3,7 @@
 This package runs a parser-backed PowerShell formatter in browsers and Node.js. It does not create a runspace or execute the input script.
 
 ```js
-import { format } from "@psscriptanalyzer/formatter-wasm";
+import { format } from '@psscriptanalyzer/formatter-wasm';
 
 const result = await format("IF($x-EQ 1){'yes'}");
 console.log(result.text);
@@ -26,3 +26,6 @@ dotnet publish Formatter.Wasm/Formatter.Wasm.csproj -c Release
 ```
 
 The publishable package is written to `Formatter.Wasm/bin/Release/net8.0/browser-wasm/AppBundle`.
+
+See [WebAssembly formatter development](../docs/FormatterWasm.md) for the architecture, complete
+API reference, parity details, testing, and troubleshooting.
