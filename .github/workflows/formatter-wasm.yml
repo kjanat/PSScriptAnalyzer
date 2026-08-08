@@ -1,0 +1,45 @@
+name: Formatter WebAssembly
+
+on:
+  pull_request:
+    paths:
+      - "Formatter.Core/**"
+      - "Formatter.Dprint/**"
+      - "Formatter.Wasm/**"
+      - "mise.toml"
+      - ".github/workflows/formatter-wasm.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "Formatter.Core/**"
+      - "Formatter.Dprint/**"
+      - "Formatter.Wasm/**"
+      - "mise.toml"
+      - ".github/workflows/formatter-wasm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dprint-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - name: Install .NET WASI workload
+        run: >-
+          mise exec -- dotnet workload install wasi-experimental
+          --skip-manifest-update
+          --source https://api.nuget.org/v3/index.json
+      - name: Build and validate plugin
+        run: Formatter.Dprint/scripts/e2e.sh
+      - name: Upload dprint plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: dprint-plugin-powershell
+          path: |
+            Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm
+            Formatter.Dprint/schema.json
+          if-no-files-found: error

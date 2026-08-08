@@ -1,8 +1,8 @@
 # WebAssembly formatter development
 
-The WebAssembly formatter provides PowerShell-aware formatting in browsers and Node.js without
-starting a PowerShell runspace. It uses PowerShell's parser for token and syntax information, but
-keeps formatting policy in a small host-independent assembly.
+The WebAssembly formatter provides PowerShell-aware formatting in browsers, Node.js, and dprint
+without starting a PowerShell runspace. It uses PowerShell's parser for token and syntax
+information, but keeps formatting policy in a small host-independent assembly.
 
 ## Repository layout
 
@@ -11,6 +11,8 @@ keeps formatting policy in a small host-independent assembly.
   PSScriptAnalyzer Engine or Rules projects.
 - `Formatter.Wasm` contains the browser-WASM host, JSON serialization boundary, JavaScript module,
   and npm package metadata.
+- `Formatter.Dprint` contains the single-file .NET WASI module, dprint schema-version-4 ABI bridge,
+  configuration schema, and end-to-end dprint checks.
 - `Formatter.Core.Tests` is a dependency-free native test executable covering representative
   formatting and error cases.
 
@@ -21,6 +23,12 @@ JavaScript format(source, options)
   -> JSExport string boundary
     -> PowerShellFormatter.Format
       -> System.Management.Automation.Language.Parser
+```
+
+The dprint call path reuses the same formatter:
+
+```text
+dprint -> plugin.wasm -> native Mono bridge -> PowerShellFormatter.Format
 ```
 
 The WebAssembly boundary only passes strings. Options enter as JSON and results leave as JSON,
@@ -40,6 +48,25 @@ The publishable npm package is written to:
 ```text
 Formatter.Wasm/bin/Release/net8.0/browser-wasm/AppBundle
 ```
+
+The dprint plugin is built separately as one directly loadable module. The tool versions are pinned
+in `mise.toml`:
+
+```sh
+mise install
+mise exec -- dotnet workload install wasi-experimental \
+  --skip-manifest-update \
+  --source https://api.nuget.org/v3/index.json
+mise exec -- dotnet publish Formatter.Dprint/Formatter.Dprint.csproj \
+  -c Release \
+  --source https://api.nuget.org/v3/index.json
+```
+
+Its release artifact is
+`Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm`. Unlike the browser AppBundle,
+it embeds the managed assemblies into the module and implements dprint's exported memory/protocol
+ABI. Runtime WASI calls are resolved inside the module; its only host import is `env.fd_write`,
+which dprint provides.
 
 `System.Management.Automation` 7.4 does not provide a `browser-wasm` runtime asset. The WASM project
 therefore references its Unix .NET 8 implementation explicitly. The implementation is compatible
@@ -169,3 +196,12 @@ import("./index.mjs").then(async ({ format }) => {
 
 The idempotence check catches edit ordering and reparsing regressions that a compile-only WASM test
 would miss.
+
+Run the direct dprint-module checks separately:
+
+```sh
+Formatter.Dprint/scripts/e2e.sh
+```
+
+That suite validates the actual `plugin.wasm` import/export surface and metadata, generated schema,
+real dprint formatting, idempotence, configuration diagnostics, and invalid UTF-8 handling.

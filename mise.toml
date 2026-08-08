@@ -1,0 +1,7 @@
+[tools]
+dotnet = "8.0.419"
+dprint = "0.55.2"
+"github:WebAssembly/wasi-sdk" = "wasi-sdk-20"
+
+[env]
+WASI_SDK_PATH = "{{xdg_data_home}}/mise/installs/github-web-assembly-wasi-sdk/wasi-sdk-20"

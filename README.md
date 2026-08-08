@@ -185,8 +185,9 @@ The documentation in this section can be found in
 
 ## WebAssembly formatter development
 
-The experimental formatter in `Formatter.Core` and `Formatter.Wasm` provides parser-backed
-PowerShell formatting for browsers and Node.js without creating a PowerShell runspace. See
+The experimental formatter in `Formatter.Core`, `Formatter.Wasm`, and `Formatter.Dprint` provides
+parser-backed PowerShell formatting for browsers, Node.js, and a directly loadable dprint
+`plugin.wasm` without creating a PowerShell runspace. See
 [WebAssembly formatter development](docs/FormatterWasm.md) for its architecture, API, build and test
 workflow, and current compatibility with `Invoke-Formatter`.
 
