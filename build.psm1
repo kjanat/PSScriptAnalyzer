@@ -81,6 +81,54 @@ function Copy-CompatibilityProfiles
     Copy-Item -Force $profileDir/* $targetProfileDir
 }
 
+# Build the portable formatter, browser/Node.js package, and direct dprint plugin.
+function Start-FormatterBuild
+{
+    [CmdletBinding()]
+    param (
+        [ValidateSet("Debug", "Release")]
+        [string]$Configuration = "Debug"
+    )
+
+    if (-not $script:DotnetExe)
+    {
+        throw "The dotnet CLI is required to build the formatter projects."
+    }
+
+    $targets = @(
+        @{ Verb = "build"; Project = "Formatter/Core.Tests/Formatter.Core.Tests.csproj" },
+        @{ Verb = "publish"; Project = "Formatter/Wasm/Formatter.Wasm.csproj" },
+        @{ Verb = "publish"; Project = "Formatter/Dprint/Formatter.Dprint.csproj" }
+    )
+
+    Push-Location -Path $projectRoot
+    try
+    {
+        foreach ($target in $targets)
+        {
+            $arguments = @(
+                $target.Verb,
+                $target.Project,
+                "--configuration",
+                $Configuration,
+                "--source",
+                "https://api.nuget.org/v3/index.json"
+            )
+            Write-Verbose -Message "$($target.Verb) $($target.Project)"
+            $buildOutput = & $script:DotnetExe $arguments 2>&1
+            if ($LASTEXITCODE -ne 0)
+            {
+                throw ($buildOutput -join [Environment]::NewLine)
+            }
+            Write-Verbose -Message "$buildOutput"
+        }
+    }
+    finally
+    {
+        Pop-Location
+    }
+}
+
 # build script analyzer (and optionally build everything with -All)
 function Start-ScriptAnalyzerBuild
 {
@@ -128,6 +176,7 @@ function Start-ScriptAnalyzerBuild
                 Write-Verbose -Verbose -Message "Configuration: $Configuration PSVersion: $psVersion"
                 Start-ScriptAnalyzerBuild -Configuration $Configuration -PSVersion $psVersion -Verbose:$verboseWanted
             }
+            Start-FormatterBuild -Configuration $Configuration -Verbose:$verboseWanted
             if ( $Catalog ) {
                 New-Catalog -Location $script:destinationDir
             }

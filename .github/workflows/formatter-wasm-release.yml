@@ -1,58 +1,55 @@
 name: Release dprint PowerShell formatter
-
-on:
-  push:
-    tags: ["[0-9]+.[0-9]+.[0-9]+"]
-
-permissions:
-  contents: write
-
+on: { push: { tags: ["[0-9]+.[0-9]+.[0-9]+"] } }
+permissions: { contents: write }
+defaults: { run: { shell: pwsh } }
 jobs:
   release:
     if: github.repository == 'kjanat/PSScriptAnalyzer'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v7
       - name: Set up mise and install tools
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        uses: jdx/mise-action@v4
         with:
           install: true
       - name: Verify release version
         run: |
-          version=$(mise exec -- dotnet msbuild Formatter.Dprint/Formatter.Dprint.csproj \
+          version=$(dotnet msbuild Formatter/Dprint/Formatter.Dprint.csproj \
             -nologo \
             -getProperty:Version)
           if [[ "$GITHUB_REF_NAME" != "$version" ]]; then
             echo "Tag $GITHUB_REF_NAME does not match dprint plugin version $version." >&2
             exit 1
           fi
+          echo "DPRINT_PLUGIN_VERSION=$version" >> "$GITHUB_ENV"
       - name: Install .NET WASI workload
         run: >-
-          mise exec -- dotnet workload install wasi-experimental
+          dotnet workload install wasi-experimental
           --skip-manifest-update
           --source https://api.nuget.org/v3/index.json
       - name: Build and validate plugin
-        run: Formatter.Dprint/scripts/e2e.sh
+        run: Formatter/Dprint/scripts/e2e.sh
       - name: Assemble release assets
         run: |
           release_dir="$RUNNER_TEMP/dprint-release"
           mkdir -p "$release_dir"
-          cp Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm "$release_dir/plugin.wasm"
-          cp Formatter.Dprint/schema.json "$release_dir/schema.json"
+          cp Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm "$release_dir/plugin.wasm"
+          cp Formatter/Dprint/schema.json "$release_dir/schema.json"
+          cp Formatter/Dprint/LICENSE "$release_dir/LICENSE"
           cd "$release_dir"
-          sha256sum plugin.wasm schema.json > checksums.txt
+          sha256sum plugin.wasm schema.json LICENSE > checksums.txt
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes=$(< Formatter.Dprint/release-notes.md)
           gh release create "$GITHUB_REF_NAME" \
-            "$RUNNER_TEMP/dprint-release/plugin.wasm" \
-            "$RUNNER_TEMP/dprint-release/schema.json" \
-            "$RUNNER_TEMP/dprint-release/checksums.txt" \
+            "$RUNNER_TEMP/dprint-release/plugin.wasm#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, WebAssembly" \
+            "$RUNNER_TEMP/dprint-release/schema.json#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, configuration schema" \
+            "$RUNNER_TEMP/dprint-release/LICENSE#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, MIT license" \
+            "$RUNNER_TEMP/dprint-release/checksums.txt#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, SHA-256 checksums" \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "dprint PowerShell formatter $GITHUB_REF_NAME" \
-            --notes "$notes" \
-            --generate-notes
+            --latest \
+            --title "dprint PowerShell formatter $DPRINT_PLUGIN_VERSION" \
+            --notes-file Formatter/Dprint/release-notes.md

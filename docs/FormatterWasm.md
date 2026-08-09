@@ -6,14 +6,14 @@ information, but keeps formatting policy in a small host-independent assembly.
 
 ## Repository layout
 
-- `Formatter.Core` contains the formatter, options, result types, and text-edit implementation. It
+- `Formatter/Core` contains the formatter, options, result types, and text-edit implementation. It
   depends on `System.Management.Automation` for the parser and has no dependency on the existing
   PSScriptAnalyzer Engine or Rules projects.
-- `Formatter.Wasm` contains the browser-WASM host, JSON serialization boundary, JavaScript module,
+- `Formatter/Wasm` contains the browser-WASM host, JSON serialization boundary, JavaScript module,
   and npm package metadata.
-- `Formatter.Dprint` contains the single-file .NET WASI module, dprint schema-version-4 ABI bridge,
+- `Formatter/Dprint` contains the single-file .NET WASI module, dprint schema-version-4 ABI bridge,
   configuration schema, and end-to-end dprint checks.
-- `Formatter.Core.Tests` is a dependency-free native test executable covering representative
+- `Formatter/Core.Tests` is a dependency-free native test executable covering representative
   formatting and error cases.
 
 The call path is:
@@ -36,17 +36,26 @@ which avoids exposing managed objects or PowerShell runtime types to JavaScript.
 
 ## Build
 
+Build the complete formatter family through the repository build entrypoint:
+
+```sh
+mise exec -- pwsh -File ./build.ps1 -Formatter -Configuration Release
+```
+
+The existing `./build.ps1 -All` path also builds these targets once after its PowerShell 5 and 7
+module builds.
+
 Use the .NET SDK selected by `global.json` and install the WebAssembly workload once:
 
 ```sh
 dotnet workload install wasm-tools
-dotnet publish Formatter.Wasm/Formatter.Wasm.csproj -c Release
+dotnet publish Formatter/Wasm/Formatter.Wasm.csproj -c Release
 ```
 
 The publishable npm package is written to:
 
 ```text
-Formatter.Wasm/bin/Release/net8.0/browser-wasm/AppBundle
+Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle
 ```
 
 The dprint plugin is built separately as one directly loadable module. The tool versions are pinned
@@ -57,13 +66,13 @@ mise install
 mise exec -- dotnet workload install wasi-experimental \
   --skip-manifest-update \
   --source https://api.nuget.org/v3/index.json
-mise exec -- dotnet publish Formatter.Dprint/Formatter.Dprint.csproj \
+mise exec -- dotnet publish Formatter/Dprint/Formatter.Dprint.csproj \
   -c Release \
   --source https://api.nuget.org/v3/index.json
 ```
 
 Its release artifact is
-`Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm`. Unlike the browser AppBundle,
+`Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm`. Unlike the browser AppBundle,
 it embeds the managed assemblies into the module and implements dprint's exported memory/protocol
 ABI. Runtime WASI calls are resolved inside the module; its only host import is `env.fd_write`,
 which dprint provides.
@@ -72,6 +81,12 @@ which dprint provides.
 therefore references its Unix .NET 8 implementation explicitly. The implementation is compatible
 with browser WASM for the parser-only surface used here. Publishing trims unused managed code and
 uses invariant globalization to reduce the bundle.
+
+PowerShell initializes its built-in CIM type accelerators through reflection while parsing typed
+scripts. The direct dprint bundle therefore preserves the required
+`Microsoft.Management.Infrastructure` types and explicitly embeds the Unix runtime assembly after
+WASI dependency resolution; otherwise real scripts with attributes or type constraints fail before
+formatting.
 
 The .NET trimmer reports warnings from code elsewhere in `System.Management.Automation` and its
 dependencies. These warnings are expected for the parser-only build; the formatter paths are
@@ -82,15 +97,15 @@ covered by native and WASM execution tests.
 Import the module from the published package and await `format`:
 
 ```js
-import { format } from '@psscriptanalyzer/formatter-wasm';
+import { format } from "@psscriptanalyzer/formatter-wasm";
 
 const result = await format("IF($value-EQ 1){'yes'}", {
-	braceStyle: 'sameLine',
-	indentSize: 4,
+  braceStyle: "sameLine",
+  indentSize: 4,
 });
 
 if (result.errors.length === 0) {
-	console.log(result.text);
+  console.log(result.text);
 }
 ```
 
@@ -126,18 +141,15 @@ format operation with a managed argument error.
 
 ## .NET API
 
-Projects that can host .NET directly may reference `Formatter.Core` without using WebAssembly:
+Projects that can host .NET directly may reference `Formatter/Core` without using WebAssembly:
 
 ```csharp
 using Microsoft.PowerShell.ScriptAnalyzer.Formatter;
 
 FormatterResult result = PowerShellFormatter.Format(
     "function Test { 'ok' }",
-    new FormatterOptions
-    {
-        BraceStyle = BraceStyle.NextLine,
-        IndentSize = 2,
-    });
+    new FormatterOptions { BraceStyle = BraceStyle.NextLine, IndentSize = 2 }
+);
 ```
 
 `PowerShellFormatter.Format` never executes the source. If the initial parser pass reports an
@@ -180,7 +192,7 @@ safe to execute.
 Run the native checks:
 
 ```sh
-dotnet run --project Formatter.Core.Tests/Formatter.Core.Tests.csproj
+dotnet run --project Formatter/Core.Tests/Formatter.Core.Tests.csproj
 ```
 
 Publish the package, then test the actual WebAssembly entry point from the `AppBundle` directory:
@@ -200,8 +212,19 @@ would miss.
 Run the direct dprint-module checks separately:
 
 ```sh
-Formatter.Dprint/scripts/e2e.sh
+mise exec -- Formatter/Dprint/scripts/e2e.sh
 ```
 
 That suite validates the actual `plugin.wasm` import/export surface and metadata, generated schema,
 real dprint formatting, idempotence, configuration diagnostics, and invalid UTF-8 handling.
+
+## Release namespaces
+
+Dprint releases use bare semantic-version tags such as `0.1.1`. This is required by
+`plugins.dprint.dev`, whose plugin tag grammar excludes dashes. Browser and Node.js package releases
+use the separate `npm-<version>` namespace.
+
+The dprint proxy selects the newest non-draft, non-prerelease GitHub release when producing
+`latest.json`. The npm workflow therefore publishes its GitHub release as a prerelease. This keeps
+the npm tarball fully downloadable while preventing it from being mistaken for a dprint plugin
+release. The dprint workflow explicitly marks its bare-semver release as GitHub's latest release.

@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://plugins.dprint.dev/kjanat/PSScriptAnalyzer/0.1.1/schema.json",
+  "title": "dprint PowerShell formatter configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "braceStyle": {
+      "description": "Placement of script-block opening braces.",
+      "type": "string",
+      "enum": ["sameLine", "nextLine"],
+      "default": "sameLine"
+    },
+    "indentSize": {
+      "description": "Spaces in one indentation level when tabs are disabled.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32,
+      "default": 4
+    },
+    "useTabs": {
+      "description": "Use one tab per indentation level.",
+      "type": "boolean",
+      "default": false
+    },
+    "correctKeywordCasing": {
+      "description": "Lowercase PowerShell keywords and operators.",
+      "type": "boolean",
+      "default": true
+    },
+    "spaceAroundOperators": {
+      "description": "Add spaces around binary and assignment operators.",
+      "type": "boolean",
+      "default": true
+    },
+    "spaceAroundPipe": {
+      "description": "Add spaces around pipeline and pipeline-chain operators.",
+      "type": "boolean",
+      "default": true
+    },
+    "spaceAfterSeparator": {
+      "description": "Add a space after commas and semicolons.",
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

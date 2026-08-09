@@ -1,0 +1,33 @@
+{
+  "name": "@psscriptanalyzer/formatter-wasm",
+  "version": "0.1.0",
+  "description": "Parser-backed PowerShell formatter for browsers and Node.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kjanat/PSScriptAnalyzer.git",
+    "directory": "Formatter/Wasm"
+  },
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#pkg": "./package.json"
+  },
+  "files": [
+    "index.d.ts",
+    "index.mjs",
+    "_framework",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

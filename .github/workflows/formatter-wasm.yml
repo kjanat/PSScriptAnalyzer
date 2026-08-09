@@ -3,25 +3,19 @@ name: Formatter WebAssembly
 on:
   pull_request:
     paths:
-      - "Formatter.Core/**"
-      - "Formatter.Dprint/**"
-      - "Formatter.Wasm/**"
-      - "mise.toml"
-      - ".github/workflows/formatter-wasm.yml"
+      - Formatter/**
+      - mise.toml
+      - .github/workflows/formatter-wasm.yml
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "Formatter.Core/**"
-      - "Formatter.Dprint/**"
-      - "Formatter.Wasm/**"
-      - "mise.toml"
-      - ".github/workflows/formatter-wasm.yml"
-  workflow_dispatch:
+      - Formatter/**
+      - mise.toml
+      - .github/workflows/formatter-wasm.yml
+  workflow_dispatch: null
 
-permissions:
-  contents: read
-
+permissions: { contents: read }
+defaults: { run: { shell: pwsh } }
 jobs:
   dprint-plugin:
     runs-on: ubuntu-latest
@@ -29,17 +23,108 @@ jobs:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - name: Install .NET WASI workload
-        run: >-
-          mise exec -- dotnet workload install wasi-experimental
-          --skip-manifest-update
-          --source https://api.nuget.org/v3/index.json
+        run: |
+          $arguments = @(
+              "workload", "install", "wasi-experimental",
+              "--skip-manifest-update",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Installing the .NET WASI workload failed with exit code $LASTEXITCODE."
+              throw "Installing the .NET WASI workload failed with exit code $LASTEXITCODE."
+          }
       - name: Build and validate plugin
-        run: Formatter.Dprint/scripts/e2e.sh
+        shell: bash
+        run: Formatter/Dprint/scripts/e2e.sh
+      - name: Read plugin version
+        id: metadata
+        run: |
+          $version = [string] (& dotnet msbuild Formatter/Dprint/Formatter.Dprint.csproj -nologo -getProperty:Version)
+          $version = $version.Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($version)) {
+              "::error::Reading the dprint plugin version failed with exit code $LASTEXITCODE."
+              throw "Reading the dprint plugin version failed with exit code $LASTEXITCODE."
+          }
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$version"
       - name: Upload dprint plugin
         uses: actions/upload-artifact@v7
         with:
-          name: dprint-plugin-powershell
+          name: dprint-powershell-formatter-${{ steps.metadata.outputs.version }}
           path: |
-            Formatter.Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm
-            Formatter.Dprint/schema.json
+            Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm
+            Formatter/Dprint/schema.json
+            Formatter/Dprint/LICENSE
+          if-no-files-found: error
+
+  browser-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - name: Install .NET WebAssembly workload
+        run: |
+          $arguments = @(
+              "workload", "install", "wasm-tools",
+              "--skip-manifest-update",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Installing the .NET WebAssembly workload failed with exit code $LASTEXITCODE."
+              throw "Installing the .NET WebAssembly workload failed with exit code $LASTEXITCODE."
+          }
+      - name: Build browser and Node.js package
+        run: |
+          $arguments = @(
+              "publish", "Formatter/Wasm/Formatter.Wasm.csproj",
+              "--configuration", "Release",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Publishing the browser and Node.js package failed with exit code $LASTEXITCODE."
+              throw "Publishing the browser and Node.js package failed with exit code $LASTEXITCODE."
+          }
+      - name: Validate package
+        run: |
+          Formatter/Wasm/scripts/Test-Package.ps1 `
+            -PackageDirectory Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle
+      - name: Pack npm artifact
+        id: package
+        run: |
+          $packageDirectory = Join-Path $PWD "Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle"
+          $artifactDirectory = Join-Path $env:RUNNER_TEMP "npm-artifact"
+          $package = Get-Content -LiteralPath (Join-Path $packageDirectory "package.json") -Raw | ConvertFrom-Json
+          $version = [string] $package.version
+          $null = New-Item -ItemType Directory -Path $artifactDirectory -Force
+
+          & npm pack $packageDirectory --pack-destination $artifactDirectory
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Packing the npm artifact failed with exit code $LASTEXITCODE."
+              throw "Packing the npm artifact failed with exit code $LASTEXITCODE."
+          }
+
+          $tarballs = @(Get-ChildItem -LiteralPath $artifactDirectory -Filter *.tgz)
+          if ($tarballs.Count -ne 1) {
+              "::error::Expected one npm tarball, got $($tarballs.Count)."
+              throw "Expected one npm tarball, got $($tarballs.Count)."
+          }
+          $entries = @(& tar -tzf $tarballs[0].FullName)
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Reading the npm tarball failed with exit code $LASTEXITCODE."
+              throw "Reading the npm tarball failed with exit code $LASTEXITCODE."
+          }
+          if (-not ($entries -cmatch '^package/_framework/.*\.wasm$')) {
+              "::error::The npm tarball does not contain a WebAssembly runtime file."
+              throw "The npm tarball does not contain a WebAssembly runtime file."
+          }
+
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$version"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "path=$($tarballs[0].FullName)"
+      - name: Upload npm artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: powershell-formatter-wasm-npm-${{ steps.package.outputs.version }}
+          path: ${{ steps.package.outputs.path }}
           if-no-files-found: error

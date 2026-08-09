@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>plugin</AssemblyName>
+    <Version>0.1.1</Version>
+    <RepositoryUrl>https://github.com/kjanat/PSScriptAnalyzer</RepositoryUrl>
+    <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <PublishTrimmed>true</PublishTrimmed>
+    <WasmSingleFileBundle>true</WasmSingleFileBundle>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Core/Formatter.Core.csproj" />
+    <PackageReference Include="Microsoft.Management.Infrastructure" />
+    <PackageReference
+      Include="Microsoft.Management.Infrastructure.Runtime.Unix"
+      GeneratePathProperty="true"
+    />
+    <PackageReference
+      Include="System.Management.Automation"
+      GeneratePathProperty="true"
+      ExcludeAssets="compile;runtime"
+    />
+    <Reference
+      Include="System.Management.Automation"
+      HintPath="$(PkgSystem_Management_Automation)/runtimes/unix/lib/net8.0/System.Management.Automation.dll"
+      Private="true"
+    />
+    <EmbeddedResource Include="LICENSE" LogicalName="Formatter.Dprint.LICENSE" />
+  </ItemGroup>
+
+  <!-- The WASI resolver drops this Unix runtime asset even though SMA loads its CIM types via reflection. -->
+  <Target Name="AddPowerShellParserAssembliesToBundle" BeforeTargets="_GenerateAssemblyObjectFiles">
+    <ItemGroup>
+      <_WasmAssembliesInternal
+        Include="$(PkgMicrosoft_Management_Infrastructure_Runtime_Unix)/runtimes/unix/lib/netstandard1.6/Microsoft.Management.Infrastructure.dll"
+        WasmRole="assembly"
+      />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AddDprintNativeSources" BeforeTargets="_WasiLink">
+    <ItemGroup>
+      <_WasiObjectFilesForBundle Include="$(MSBuildProjectDirectory)/native/dprint_exports.c" />
+      <_WasiObjectFilesForBundle Include="$(MSBuildProjectDirectory)/native/wasi_stubs.c" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_sock_accept" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_args_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_args_sizes_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_environ_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_environ_sizes_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_clock_res_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_clock_time_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_advise" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_close" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_fdstat_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_fdstat_set_flags" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_filestat_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_filestat_set_size" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_filestat_set_times" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_pread" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_pwrite" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_prestat_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_prestat_dir_name" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_read" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_readdir" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_seek" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_tell" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_sync" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_fd_write" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_filestat_get" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_create_directory" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_filestat_set_times" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_link" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_open" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_readlink" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_remove_directory" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_rename" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_path_unlink_file" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_poll_oneoff" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_proc_exit" />
+      <_WasiSdkLinkerFlags Include="--wrap=__wasi_random_get" />
+    </ItemGroup>
+  </Target>
+</Project>

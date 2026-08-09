@@ -1,6 +1,9 @@
 [tools]
 dotnet = "8.0.419"
+node = "26.7.0"
 dprint = "0.55.2"
+tombi = "1.2.7"
+clang-format = "22.1.8"
 "github:WebAssembly/wasi-sdk" = "wasi-sdk-20"
 
 [env]

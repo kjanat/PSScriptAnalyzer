@@ -1,0 +1,7 @@
+{
+  "excludes": ["fixtures/input.ps1"],
+  "plugins": [
+    "../bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm"
+  ],
+  "powershell": {}
+}

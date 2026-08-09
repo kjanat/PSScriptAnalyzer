@@ -1,0 +1,114 @@
+name: Release PowerShell formatter npm package
+on: { push: { tags: ["npm-[0-9]+.[0-9]+.[0-9]+"] } }
+permissions: { contents: write }
+defaults: { run: { shell: pwsh } }
+jobs:
+  release:
+    if: github.repository == 'kjanat/PSScriptAnalyzer'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up mise and install tools
+        uses: jdx/mise-action@v4
+        with: { install: true }
+      - name: Verify release version
+        working-directory: Formatter/Wasm
+        run: |
+          $package = Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json
+          $packageVersion = [string] $package.version
+          $expectedTag = "npm-$packageVersion"
+          if ($env:GITHUB_REF_NAME -cne $expectedTag) {
+              $message = "Tag {0} does not match npm package tag {1}." -f $env:GITHUB_REF_NAME, $expectedTag
+              "::error::$message"
+              throw $message
+          }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "NPM_PACKAGE_VERSION=$packageVersion"
+      - name: Install .NET WebAssembly workload
+        run: |
+          $arguments = @(
+              "workload", "install", "wasm-tools",
+              "--skip-manifest-update",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Installing the .NET WebAssembly workload failed with exit code $LASTEXITCODE."
+              throw "Installing the .NET WebAssembly workload failed with exit code $LASTEXITCODE."
+          }
+      - name: Build browser and Node.js package
+        run: |
+          $arguments = @(
+              "publish", "Formatter/Wasm/Formatter.Wasm.csproj",
+              "--configuration", "Release",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Publishing the browser and Node.js package failed with exit code $LASTEXITCODE."
+              throw "Publishing the browser and Node.js package failed with exit code $LASTEXITCODE."
+          }
+      - name: Validate Node.js package
+        run: |
+          Formatter/Wasm/scripts/Test-Package.ps1 `
+            -PackageDirectory Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle
+      - name: Assemble npm release assets
+        run: |
+          $packageDirectory = Join-Path $PWD "Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle"
+          $releaseDirectory = Join-Path $env:RUNNER_TEMP "npm-release"
+          $null = New-Item -ItemType Directory -Path $releaseDirectory -Force
+
+          & npm pack $packageDirectory --pack-destination $releaseDirectory
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Packing the npm package failed with exit code $LASTEXITCODE."
+              throw "Packing the npm package failed with exit code $LASTEXITCODE."
+          }
+
+          $tarballs = @(Get-ChildItem -LiteralPath $releaseDirectory -Filter *.tgz)
+          if ($tarballs.Count -ne 1) {
+              "::error::Expected one npm tarball, got $($tarballs.Count)."
+              throw "Expected one npm tarball, got $($tarballs.Count)."
+          }
+
+          $entries = @(& tar -tzf $tarballs[0].FullName)
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Reading the npm tarball failed with exit code $LASTEXITCODE."
+              throw "Reading the npm tarball failed with exit code $LASTEXITCODE."
+          }
+          foreach ($requiredEntry in "package/LICENSE", "package/index.d.ts", "package/index.mjs") {
+              if ($requiredEntry -cnotin $entries) {
+                  "::error::The npm tarball is missing $requiredEntry."
+                  throw "The npm tarball is missing $requiredEntry."
+              }
+          }
+          if (-not ($entries -cmatch '^package/_framework/.*\.wasm$')) {
+              "::error::The npm tarball does not contain a WebAssembly runtime file."
+              throw "The npm tarball does not contain a WebAssembly runtime file."
+          }
+
+          $checksumsPath = Join-Path $releaseDirectory "checksums.txt"
+          $hash = (Get-FileHash -LiteralPath $tarballs[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath $checksumsPath -Value "$hash  $($tarballs[0].Name)"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "NPM_TARBALL=$($tarballs[0].FullName)"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "NPM_CHECKSUMS=$checksumsPath"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @(
+              "$($env:NPM_TARBALL)#PowerShell formatter for WebAssembly $($env:NPM_PACKAGE_VERSION), npm package",
+              "$($env:NPM_CHECKSUMS)#PowerShell formatter for WebAssembly $($env:NPM_PACKAGE_VERSION), SHA-256 checksums"
+          )
+          $arguments = @("release", "create", $env:GITHUB_REF_NAME) + $assets + @(
+              "--repo", $env:GITHUB_REPOSITORY,
+              "--verify-tag",
+              "--prerelease",
+              "--latest=false",
+              "--title", "PowerShell formatter for WebAssembly $($env:NPM_PACKAGE_VERSION)",
+              "--notes-file", "Formatter/Wasm/release-notes.md"
+          )
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) {
+              "::error::Creating the GitHub release failed with exit code $LASTEXITCODE."
+              throw "Creating the GitHub release failed with exit code $LASTEXITCODE."
+          }

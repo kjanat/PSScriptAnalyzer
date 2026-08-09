@@ -12,8 +12,12 @@ param(
 
     [Parameter(ParameterSetName="BuildOne")]
     [Parameter(ParameterSetName="BuildAll")]
+    [Parameter(ParameterSetName="BuildFormatter")]
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Debug",
+
+    [Parameter(Mandatory=$true, ParameterSetName="BuildFormatter")]
+    [switch]$Formatter,
 
     # For building documentation only
     # or re-building it since docs gets built automatically only the first time
@@ -81,6 +85,9 @@ END {
                 Configuration = $Configuration
             }
             Start-ScriptAnalyzerBuild @buildArgs
+        }
+        "BuildFormatter" {
+            Start-FormatterBuild -Configuration $Configuration -Verbose:$verboseWanted
         }
         "Package" {
             Start-CreatePackage
