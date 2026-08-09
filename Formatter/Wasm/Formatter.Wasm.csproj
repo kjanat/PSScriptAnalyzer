@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmMainJSPath>index.mjs</WasmMainJSPath>
+    <PublishTrimmed>true</PublishTrimmed>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Core/Formatter.Core.csproj" />
+    <PackageReference
+      Include="System.Management.Automation"
+      GeneratePathProperty="true"
+      ExcludeAssets="compile;runtime"
+    />
+    <!-- SMA does not publish a browser runtime asset, but its Unix net8 implementation is WASM-compatible. -->
+    <Reference
+      Include="System.Management.Automation"
+      HintPath="$(PkgSystem_Management_Automation)/runtimes/unix/lib/net8.0/System.Management.Automation.dll"
+      Private="true"
+    />
+  </ItemGroup>
+
+  <ItemGroup>
+    <WasmExtraFilesToDeploy Include="package.json" TargetPath="package.json" />
+    <WasmExtraFilesToDeploy Include="index.d.ts" TargetPath="index.d.ts" />
+    <WasmExtraFilesToDeploy Include="README.md" TargetPath="README.md" />
+    <WasmExtraFilesToDeploy Include="LICENSE" TargetPath="LICENSE" />
+  </ItemGroup>
+</Project>

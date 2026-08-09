@@ -3,6 +3,7 @@
     <!-- Newtonsoft.Json brings in an old version of CSharp. So, we are forcing a newer version. -->
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.Management.Infrastructure" Version="3.0.0" />
+    <PackageVersion Include="Microsoft.Management.Infrastructure.Runtime.Unix" Version="3.0.0" />
     <PackageVersion Include="Microsoft.PowerShell.5.ReferenceAssemblies" Version="1.1.0" />
     <PackageVersion Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <!--  The version of Newtonsoft.Json needs to be newer than the version in the oldest supported version of PowerShell 7: https://github.com/PowerShell/PowerShell/blob/v7.2.17/src/System.Management.Automation/System.Management.Automation.csproj#L15 -->

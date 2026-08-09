@@ -12,6 +12,7 @@
 - [Introduction](#introduction)
 - [Documentation Notice](#documentation-notice)
 - [Installation](#installation)
+- [WebAssembly formatter development](#webassembly-formatter-development)
 - [Contributions are welcome](#contributions-are-welcome)
 - [Creating a Release](#creating-a-release)
 - [Code of Conduct](#code-of-conduct)
@@ -181,6 +182,16 @@ Get-TestFailures
 
 The documentation in this section can be found in
 [Using PSScriptAnalyzer](https://learn.microsoft.com/powershell/utility-modules/psscriptanalyzer/using-scriptanalyzer).
+
+## WebAssembly formatter development
+
+The experimental formatter under `Formatter/` provides
+parser-backed PowerShell formatting for browsers, Node.js, and a directly loadable dprint
+`plugin.wasm` without creating a PowerShell runspace. See
+[WebAssembly formatter development](docs/FormatterWasm.md) for its architecture, API, build and test
+workflow, and current compatibility with `Invoke-Formatter`.
+
+[Back to ToC](#table-of-contents)
 
 ## Contributions are welcome
 

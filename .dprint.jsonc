@@ -1,0 +1,94 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "lineWidth": 120,
+  "useTabs": false,
+  "newLineKind": "lf",
+  "includes": [
+    ".dprint.jsonc",
+    ".config/dotnet-tools.json",
+    "mise.toml",
+    ".github/workflows/formatter-*.yml",
+    "Formatter/**/*.cs",
+    "Formatter/**/*.csproj",
+    "Formatter/**/*.json",
+    "Formatter/**/*.md",
+    "Formatter/**/*.mjs",
+    "Formatter/**/*.ps1",
+    "Formatter/**/*.sh",
+    "Formatter/**/*.ts",
+    "docs/FormatterWasm.md"
+  ],
+  "powershell": {
+    "braceStyle": "nextLine",
+    "indentSize": 4,
+    "useTabs": false,
+    "correctKeywordCasing": true,
+    "spaceAroundOperators": true,
+    "spaceAroundPipe": true,
+    "spaceAfterSeparator": true
+  },
+  "json": {
+    "useTabs": false,
+    "indentWidth": 2
+  },
+  "markdown": {
+    "textWrap": "maintain",
+    "emphasisKind": "asterisks"
+  },
+  "typescript": {
+    "useTabs": false,
+    "indentWidth": 2,
+    "quoteStyle": "preferDouble"
+  },
+  "yaml": {
+    "indentWidth": 2,
+    "printWidth": 160
+  },
+  "shfmt": {
+    "useTabs": false,
+    "binaryNextLine": true,
+    "switchCaseIndent": true
+  },
+  "exec": {
+    "cwd": "${configDir}",
+    "lineWidth": 120,
+    "indentWidth": 4,
+    "useTabs": false,
+    "timeout": 120,
+    "commands": [
+      {
+        "command": "mise exec -- dotnet csharpier format --stdin-path {{cwd}}/{{file_path}} --log-level None",
+        "exts": ["cs", "csproj", "props", "targets", "resx", "ps1xml"],
+        "setupCommand": "mise exec -- dotnet tool restore --add-source https://api.nuget.org/v3/index.json --ignore-failed-sources",
+        "cacheKeyFiles": [".config/dotnet-tools.json"]
+      },
+      {
+        "command": "mise exec -- clang-format --assume-filename {{file_path}}",
+        "exts": ["c", "h"],
+        "cacheKeyFiles": [".clang-format", "mise.toml"]
+      },
+      {
+        "command": "mise exec -- tombi format - --stdin-filename {{file_path}}",
+        "exts": ["toml"],
+        "cacheKeyFiles": ["mise.toml"]
+      }
+    ]
+  },
+  "excludes": [
+    "**/{bin,obj,out}/**",
+    "**/node_modules/**",
+    "PSCompatibilityCollector/{optional_profiles,profiles}/**",
+    "Formatter/Dprint/native/**",
+    "Formatter/Dprint/schema.json",
+    "Formatter/Dprint/tests/**"
+  ],
+  "plugins": [
+    "Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm",
+    "https://plugins.dprint.dev/kjanat/shfmt-1.0.0.wasm",
+    "https://plugins.dprint.dev/json-0.23.0.wasm",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm",
+    "https://plugins.dprint.dev/typescript-0.96.1.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
+    "https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa"
+  ]
+}
