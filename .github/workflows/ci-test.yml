@@ -21,6 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Set up WASI SDK
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          install_args: github:WebAssembly/wasi-sdk
+          export_path: false
+
       - name: Install dotnet
         uses: actions/setup-dotnet@v6
         with:
