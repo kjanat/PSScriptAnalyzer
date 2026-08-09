@@ -31,6 +31,21 @@ jobs:
         run: ./tools/installPSResources.ps1
         shell: pwsh
 
+      - name: Install formatter workloads
+        run: |
+          $arguments = @(
+              "workload", "install", "wasm-tools", "wasi-experimental",
+              "--skip-manifest-update",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              $message = "Installing the formatter workloads failed with exit code $LASTEXITCODE."
+              "::error::$message"
+              throw $message
+          }
+        shell: pwsh
+
       - name: Build
         run: ./build.ps1 -Configuration Release -All -Verbose
         shell: pwsh
