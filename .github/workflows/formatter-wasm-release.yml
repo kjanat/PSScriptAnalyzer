@@ -1,5 +1,5 @@
 name: Release dprint PowerShell formatter
-on: { push: { tags: ["[0-9]+.[0-9]+.[0-9]+"] } }
+on: { push: { tags: ["dprint-[0-9]+.[0-9]+.[0-9]+"] } }
 permissions: { contents: write }
 defaults: { run: { shell: pwsh } }
 jobs:
@@ -15,41 +15,81 @@ jobs:
           install: true
       - name: Verify release version
         run: |
-          version=$(dotnet msbuild Formatter/Dprint/Formatter.Dprint.csproj \
-            -nologo \
-            -getProperty:Version)
-          if [[ "$GITHUB_REF_NAME" != "$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match dprint plugin version $version." >&2
-            exit 1
-          fi
-          echo "DPRINT_PLUGIN_VERSION=$version" >> "$GITHUB_ENV"
+          $version = (& dotnet msbuild Formatter/Dprint/Formatter.Dprint.csproj `
+              -nologo `
+              -getProperty:Version).Trim()
+          if ($LASTEXITCODE -ne 0) {
+              $message = "Reading the dprint plugin version failed with exit code $LASTEXITCODE."
+              "::error::$message"
+              throw $message
+          }
+          $expectedTag = "dprint-$version"
+          if ($env:GITHUB_REF_NAME -cne $expectedTag) {
+              $message = "Tag {0} does not match dprint plugin tag {1}." -f $env:GITHUB_REF_NAME, $expectedTag
+              "::error::$message"
+              throw $message
+          }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "DPRINT_PLUGIN_VERSION=$version"
       - name: Install .NET WASI workload
-        run: >-
-          dotnet workload install wasi-experimental
-          --skip-manifest-update
-          --source https://api.nuget.org/v3/index.json
+        run: |
+          $arguments = @(
+              "workload", "install", "wasi-experimental",
+              "--skip-manifest-update",
+              "--source", "https://api.nuget.org/v3/index.json"
+          )
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+              $message = "Installing the .NET WASI workload failed with exit code $LASTEXITCODE."
+              "::error::$message"
+              throw $message
+          }
       - name: Build and validate plugin
-        run: Formatter/Dprint/scripts/e2e.sh
+        run: |
+          & ./Formatter/Dprint/scripts/e2e.sh
+          if ($LASTEXITCODE -ne 0) {
+              $message = "Building and validating the dprint plugin failed with exit code $LASTEXITCODE."
+              "::error::$message"
+              throw $message
+          }
       - name: Assemble release assets
         run: |
-          release_dir="$RUNNER_TEMP/dprint-release"
-          mkdir -p "$release_dir"
-          cp Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm "$release_dir/plugin.wasm"
-          cp Formatter/Dprint/schema.json "$release_dir/schema.json"
-          cp Formatter/Dprint/LICENSE "$release_dir/LICENSE"
-          cd "$release_dir"
-          sha256sum plugin.wasm schema.json LICENSE > checksums.txt
+          $releaseDirectory = Join-Path $env:RUNNER_TEMP "dprint-release"
+          $null = New-Item -ItemType Directory -Path $releaseDirectory -Force
+          $assets = @(
+              @{ Source = "Formatter/Dprint/bin/Release/net8.0/wasi-wasm/AppBundle/plugin.wasm"; Name = "plugin.wasm" },
+              @{ Source = "Formatter/Dprint/schema.json"; Name = "schema.json" },
+              @{ Source = "Formatter/Dprint/LICENSE"; Name = "LICENSE" }
+          )
+          foreach ($asset in $assets) {
+              Copy-Item -LiteralPath $asset.Source -Destination (Join-Path $releaseDirectory $asset.Name)
+          }
+          $checksums = foreach ($asset in $assets) {
+              $path = Join-Path $releaseDirectory $asset.Name
+              $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($asset.Name)"
+          }
+          Set-Content -LiteralPath (Join-Path $releaseDirectory "checksums.txt") -Value $checksums
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "$RUNNER_TEMP/dprint-release/plugin.wasm#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, WebAssembly" \
-            "$RUNNER_TEMP/dprint-release/schema.json#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, configuration schema" \
-            "$RUNNER_TEMP/dprint-release/LICENSE#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, MIT license" \
-            "$RUNNER_TEMP/dprint-release/checksums.txt#dprint PowerShell formatter $DPRINT_PLUGIN_VERSION, SHA-256 checksums" \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --latest \
-            --title "dprint PowerShell formatter $DPRINT_PLUGIN_VERSION" \
-            --notes-file Formatter/Dprint/release-notes.md
+          $releaseDirectory = Join-Path $env:RUNNER_TEMP "dprint-release"
+          $assets = @(
+              "$(Join-Path $releaseDirectory 'plugin.wasm')#dprint PowerShell formatter $($env:DPRINT_PLUGIN_VERSION), WebAssembly",
+              "$(Join-Path $releaseDirectory 'schema.json')#dprint PowerShell formatter $($env:DPRINT_PLUGIN_VERSION), configuration schema",
+              "$(Join-Path $releaseDirectory 'LICENSE')#dprint PowerShell formatter $($env:DPRINT_PLUGIN_VERSION), MIT license",
+              "$(Join-Path $releaseDirectory 'checksums.txt')#dprint PowerShell formatter $($env:DPRINT_PLUGIN_VERSION), SHA-256 checksums"
+          )
+          $arguments = @("release", "create", $env:GITHUB_REF_NAME) + $assets + @(
+              "--repo", $env:GITHUB_REPOSITORY,
+              "--verify-tag",
+              "--latest",
+              "--title", "dprint PowerShell formatter $($env:DPRINT_PLUGIN_VERSION)",
+              "--notes-file", "Formatter/Dprint/release-notes.md"
+          )
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) {
+              $message = "Creating the dprint GitHub release failed with exit code $LASTEXITCODE."
+              "::error::$message"
+              throw $message
+          }

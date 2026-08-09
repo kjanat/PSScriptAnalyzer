@@ -220,11 +220,10 @@ real dprint formatting, idempotence, configuration diagnostics, and invalid UTF-
 
 ## Release namespaces
 
-Dprint releases use bare semantic-version tags such as `0.1.1`. This is required by
-`plugins.dprint.dev`, whose plugin tag grammar excludes dashes. Browser and Node.js package releases
-use the separate `npm-<version>` namespace.
+Dprint releases use `dprint-<version>` tags such as `dprint-0.1.1`. Browser and Node.js package
+releases use the separate `npm-<version>` namespace.
 
 The dprint proxy selects the newest non-draft, non-prerelease GitHub release when producing
 `latest.json`. The npm workflow therefore publishes its GitHub release as a prerelease. This keeps
 the npm tarball fully downloadable while preventing it from being mistaken for a dprint plugin
-release. The dprint workflow explicitly marks its bare-semver release as GitHub's latest release.
+release. The dprint workflow explicitly marks its prefixed release as GitHub's latest release.
