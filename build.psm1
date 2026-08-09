@@ -97,9 +97,16 @@ function Start-FormatterBuild
 
     $targets = @(
         @{ Verb = "build"; Project = "Formatter/Core.Tests/Formatter.Core.Tests.csproj" },
-        @{ Verb = "publish"; Project = "Formatter/Wasm/Formatter.Wasm.csproj" },
-        @{ Verb = "publish"; Project = "Formatter/Dprint/Formatter.Dprint.csproj" }
+        @{ Verb = "publish"; Project = "Formatter/Wasm/Formatter.Wasm.csproj" }
     )
+    if ($IsLinux)
+    {
+        $targets += @{ Verb = "publish"; Project = "Formatter/Dprint/Formatter.Dprint.csproj" }
+    }
+    else
+    {
+        Write-Verbose -Message "Skipping the Linux-built direct dprint plugin."
+    }
 
     Push-Location -Path $projectRoot
     try
