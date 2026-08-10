@@ -1,5 +1,5 @@
 name: Release PowerShell formatter npm package
-on: { push: { tags: ["npm-[0-9]+.[0-9]+.[0-9]+"] } }
+on: { push: { tags: ["[0-9]+.[0-9]+.[0-9]+-npm"] } }
 permissions: { contents: write }
 defaults: { run: { shell: pwsh } }
 jobs:
@@ -17,7 +17,7 @@ jobs:
         run: |
           $package = Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json
           $packageVersion = [string] $package.version
-          $expectedTag = "npm-$packageVersion"
+          $expectedTag = "$packageVersion-npm"
           if ($env:GITHUB_REF_NAME -cne $expectedTag) {
               $message = "Tag {0} does not match npm package tag {1}." -f $env:GITHUB_REF_NAME, $expectedTag
               "::error::$message"

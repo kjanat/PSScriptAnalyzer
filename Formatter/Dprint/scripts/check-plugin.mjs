@@ -57,7 +57,7 @@ assert.equal(info.configKey, "powershell");
 assert.equal(info.helpUrl, "https://github.com/kjanat/PSScriptAnalyzer");
 assert.equal(
   info.configSchemaUrl,
-  `https://plugins.dprint.dev/kjanat/PSScriptAnalyzer/${expectedVersion}/schema.json`,
+  `https://plugins.dprint.dev/kjanat/PSScriptAnalyzer/${expectedVersion}-dprint/schema.json`,
 );
 assert.equal(
   info.updateUrl,

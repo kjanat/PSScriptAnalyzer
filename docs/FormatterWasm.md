@@ -220,8 +220,8 @@ real dprint formatting, idempotence, configuration diagnostics, and invalid UTF-
 
 ## Release namespaces
 
-Dprint releases use `dprint-<version>` tags such as `dprint-0.1.1`. Browser and Node.js package
-releases use the separate `npm-<version>` namespace.
+Dprint releases use `<version>-dprint` tags such as `0.1.1-dprint`. Browser and Node.js package
+releases use the separate `<version>-npm` namespace.
 
 The dprint proxy selects the newest non-draft, non-prerelease GitHub release when producing
 `latest.json`. The npm workflow therefore publishes its GitHub release as a prerelease. This keeps

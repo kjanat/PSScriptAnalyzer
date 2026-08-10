@@ -27,11 +27,11 @@ dotnet publish Formatter/Wasm/Formatter.Wasm.csproj -c Release
 
 The publishable package is written to `Formatter/Wasm/bin/Release/net8.0/browser-wasm/AppBundle`.
 
-Release tags use the package-specific `npm-<version>` namespace. Download and install the GitHub
+Release tags use the package-specific `<version>-npm` namespace. Download and install the GitHub
 release tarball directly with:
 
 ```sh
-npm install https://github.com/kjanat/PSScriptAnalyzer/releases/download/npm-0.1.0/psscriptanalyzer-formatter-wasm-0.1.0.tgz
+npm install https://github.com/kjanat/PSScriptAnalyzer/releases/download/0.1.1-npm/psscriptanalyzer-formatter-wasm-0.1.1.tgz
 ```
 
 See [WebAssembly formatter development](../../docs/FormatterWasm.md) for the architecture, complete

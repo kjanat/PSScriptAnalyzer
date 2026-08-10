@@ -24,7 +24,7 @@ public static class Plugin
     private const string RepositoryUrl = $"https://github.com/{RepositoryPath}";
     private static readonly string Version = GetVersion();
     private static readonly string ConfigSchemaUrl =
-        $"https://plugins.dprint.dev/{RepositoryPath}/{Version}/schema.json";
+        $"https://plugins.dprint.dev/{RepositoryPath}/{Version}-dprint/schema.json";
 
     private static readonly HashSet<string> KnownProperties =
     [

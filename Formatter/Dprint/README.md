@@ -119,18 +119,19 @@ node Formatter/Dprint/scripts/generate-schema.mjs \
 ## Release
 
 The plugin version is the `Version` property in `Formatter/Dprint/Formatter.Dprint.csproj`. Its Git
-tag, published dprint version, and schema URL use that same bare semantic version. The dprint proxy
-does not accept dashes in plugin tags, so `dprint-<Version>` is not a valid registry release tag.
+tag uses the `<Version>-dprint` namespace, while the published dprint version remains `Version`.
+The schema URL contains the full release tag so the dprint proxy resolves the namespaced GitHub
+release without falling back to a bare version tag.
 
 The repository also contains PSScriptAnalyzer's historical tags. The release workflow therefore
-refuses to publish unless the pushed tag exactly matches the dprint project's declared version.
+refuses to publish unless the pushed tag exactly matches `<Version>-dprint`.
 
 To publish a new immutable release:
 
 1. Update `Version`, build the module, and regenerate `schema.json`.
 2. Run `mise exec -- Formatter/Dprint/scripts/e2e.sh` and commit the version, schema, and related
    changes.
-3. Create and push a signed `<Version>` tag for that exact signed commit.
+3. Create and push a signed `<Version>-dprint` tag for that exact signed commit.
 4. Follow the `Release dprint PowerShell formatter` workflow through completion.
 5. Verify that the GitHub release contains `plugin.wasm`, `schema.json`, `LICENSE`, and
    `checksums.txt`, then
