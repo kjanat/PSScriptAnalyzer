@@ -1,0 +1,54 @@
+# One-shot bridge (kjanat/powershell-formatter#5): republish the canonical
+# dprint-plugin-pwsh release here so installs of the retired prototype are
+# migrated by their next `dprint config update`. After one bridge release
+# this repo never needs another — the new plugin embeds the canonical
+# update URL.
+---
+name: Bridge release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Canonical kjanat/dprint-plugin-pwsh release tag (bare semver)
+        required: true
+        type: string
+permissions: { contents: write }
+defaults: { run: { shell: bash } }
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Republish the canonical release as the bridge
+        run: |
+          if gh release view "${TAG}" -R "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "release ${TAG} already exists; leaving it untouched (immutable)"
+            exit 0
+          fi
+          gh release download "${TAG}" -R kjanat/dprint-plugin-pwsh \
+            -p plugin.wasm -p schema.json
+          # Byte-identical to the canonical release, or nothing ships.
+          sha_wasm="$(sha256sum plugin.wasm | cut -d' ' -f1)"
+          sha_schema="$(sha256sum schema.json | cut -d' ' -f1)"
+          expected="$(gh api "repos/kjanat/dprint-plugin-pwsh/releases/tags/${TAG}" \
+            --jq '.assets[] | select(.name == "plugin.wasm") | .digest')"
+          [[ "sha256:${sha_wasm}" == "${expected}" ]]
+          gh release create "${TAG}" plugin.wasm schema.json \
+            -R "${GITHUB_REPOSITORY}" --title "${TAG}" --notes "$(cat <<EOF
+          This plugin has moved. This release migrates existing installs to its successor.
+
+          - Plugin: \`dprint-plugin-powershell\` → **\`dprint-plugin-pwsh\`**
+          - Config key: \`"powershell"\` → **\`"pwsh"\`** — rename the block in your dprint config. Unknown keys are rejected, so the old block cannot be silently ignored.
+          - The option set has changed: see the [schema](https://plugins.dprint.dev/kjanat/pwsh/${TAG}/schema.json).
+
+          \`dprint config update\` installs this release from the old update URL once; afterwards updates come from the new home automatically. Fresh installs: \`dprint add kjanat/pwsh\`.
+
+          The attached assets are byte-identical to the canonical [kjanat/dprint-plugin-pwsh ${TAG}](https://github.com/kjanat/dprint-plugin-pwsh/releases/tag/${TAG}) release.
+
+          sha256:
+          - \`plugin.wasm\`: \`${sha_wasm}\`
+          - \`schema.json\`: \`${sha_schema}\`
+          EOF
+            )"
