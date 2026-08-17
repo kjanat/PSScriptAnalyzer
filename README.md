@@ -1,5 +1,16 @@
 # PSScriptAnalyzer
 
+> [!IMPORTANT]
+> **The dprint formatter plugin that lived in this fork has moved to
+> [`kjanat/pwsh`](https://github.com/kjanat/dprint-plugin-pwsh)** (config key
+> `"pwsh"`, install with `dprint add kjanat/pwsh`). Existing installs are
+> migrated automatically by `dprint config update` via the
+> [0.2.0 bridge release](https://github.com/kjanat/PSScriptAnalyzer/releases/tag/0.2.0).
+> Manual steps: rename the `"powershell"` config block to `"pwsh"` and
+> translate its option names — the option set changed (see the
+> [latest schema](https://plugins.dprint.dev/kjanat/pwsh/latest/schema.json)).
+> This repository publishes no further releases.
+
 <img src="logo.png" width="180">
 
 [![Build Status](https://dev.azure.com/powershell/psscriptanalyzer/_apis/build/status/psscriptanalyzer-ci?branchName=master)](https://dev.azure.com/powershell/psscriptanalyzer/_build/latest?definitionId=80&branchName=master)
